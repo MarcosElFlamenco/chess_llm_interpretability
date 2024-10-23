@@ -13,3 +13,7 @@ models/*
 
 contrastive_activations/*
 intervention_logs/*
+
+aws/
+awscliv2.zip
+interEnv/
