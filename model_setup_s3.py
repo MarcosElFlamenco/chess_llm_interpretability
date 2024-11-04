@@ -9,41 +9,64 @@ from transformer_lens import (
 )
 
 import os
+from model import GPTConfig, GPT
+from save_checkpoints import upload_checkpoint, load_checkpoint
+
 
 # Our pytorch model is in the nanogpt format. For easy linear probing of the residual stream, we want to convert
 # it to the transformer lens format. This is done in the following code block.
 # This code was developed using Neel Nanda's othello_reference/Othello_GPT.ipynb as a reference.
 
 torch.set_grad_enabled(False)
-
-LOAD_AND_CONVERT_CHECKPOINT = True
-
+LOAD_AND_CONVERT_CHECKPOINT = False
 device = "cpu"
+checkpoint_key = 'checkpoint.pth'
+bucket_name = 'chess-checkpoint-craft'
 
 MODEL_DIR = "models/"
 
-n_heads = 8
-n_layers = 8
-d_model = 512
-
-#model_name = f"lichess_{n_layers}layers_ckpt_no_optimizer.pt"
-model_name = f'random_{n_layers}layers_ckpt20K.pth'
-
-
-if not os.path.exists(f"{MODEL_DIR}{model_name}"):
-    state_dict = utils.download_file_from_hf("adamkarvonen/chess_llms", model_name)
-    model = torch.load(state_dict, map_location=device)
-    torch.save(model, f"{MODEL_DIR}{model_name}")
+n_layer = 8
+n_head = 8
+n_embd = 512
+block_size = 1023
+bias = False
+dropout = 0.0
 
 
-checkpoint = torch.load(f"{MODEL_DIR}{model_name}", map_location=device)
+model_args = dict(n_layer=n_layer, n_head=n_head, n_embd=n_embd, block_size=block_size,
+                bias=bias, vocab_size=None, dropout=dropout) # start with model_args from command line
+
+ckpt_path = os.path.join(MODEL_DIR, 'checkpoint.pth')
+checkpoint = load_checkpoint(bucket_name, checkpoint_key, device)
+checkpoint_model_args = checkpoint['model_args']
+# force these config attributes to be equal otherwise we can't even resume training
+# the rest of the attributes (e.g. dropout) can stay as desired from command line
+for k in ['n_layer', 'n_head', 'n_embd', 'block_size', 'bias', 'vocab_size']:
+    model_args[k] = checkpoint_model_args[k]
+# create the model
+gptconf = GPTConfig(**model_args)
+model = GPT(gptconf)
+state_dict = checkpoint['model']
+# fix the keys of the state dictionary :(
+# honestly no idea how checkpoints sometimes get this prefix, have to debug more
+unwanted_prefix = '_orig_mod.'
+iter_num = checkpoint['iter_num']
+flag = False
+for k,v in list(state_dict.items()):
+    if k.startswith(unwanted_prefix):
+        flag = True
+        state_dict[k[len(unwanted_prefix):]] = state_dict.pop(k)
+model.load_state_dict(state_dict)
+best_val_loss = checkpoint['best_val_loss']
+if flag:
+    print('we did in face remove unwanted prefix')
+
 
 # Print the keys of the checkpoint dictionary
 print(checkpoint.keys())
 model_state = checkpoint["model"]
 # for key, value in model_state.items():
 #     print(key, value.shape)
-
 
 def convert_nanogpt_weights(old_state_dict, cfg: HookedTransformerConfig, bias: bool = False):
     """For https://github.com/karpathy/nanoGPT
@@ -158,10 +181,10 @@ sample_input = torch.tensor([[15, 6, 4, 27, 9, 0, 25, 10, 0, 7, 4, 19]]).to(devi
 # sample_input = torch.tensor([[15, 6, 4, 27, 9]])
 # The argmax of the output (ie the most likely next move from each position)
 sample_output = torch.tensor([[6, 4, 27, 9, 0, 27, 10, 0, 7, 4, 19, 28]])
-output1 = model(sample_input)
-print(type(output1))
-model_output = output1.argmax(dim=-1)
-
+output1 = model(sample_output)
+print(output1.shape())
+output2 = output1.argmax(dim=-1)
+model_output = output2
 print(model_output)
 print(sample_output == model_output)
 

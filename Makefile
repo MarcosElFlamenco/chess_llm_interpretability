@@ -1,5 +1,6 @@
-PYTHON := python
+PYTHON := python3
 SETUP := model_setup.py
+SETUPs3:= model_setup_s3.py
 TEST := train_test_chess.py
 FILTER := lichess_data_filtering.ipynb
 
@@ -14,9 +15,12 @@ test: $(TEST)
 		--mode test \
 		--probe skill
 
+train_probe:
+	$(PYTHON) $(TEST)
+
 filter: $(FILTER)
 	$(PYTHON) $(FILTER)
 
-sups3
+sups3:
 	aws s3 rm s3://$(B1) --recursive
 	aws s3 rb s3://$(B1)
