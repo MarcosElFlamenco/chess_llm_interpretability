@@ -1,0 +1,29 @@
+name: lichess_train
+
+resources:
+  # Use spot instances to save cost.
+  use_spot: true
+
+
+# To make this example work, please run the following command:
+workdir: ~/chess_llm_interpretability
+
+
+file_mounts:
+  /endpoint:
+    source: s3://bins-bucket-craft
+    store: s3
+    mode: MOUNT
+  /source_files:
+    source: s3://go-bucket-craft
+    store: s3
+    mode: MOUNT
+
+setup: |
+  set -e .
+  ll
+  pip install -r remote/probe_freeze.txt
+
+run: |
+  set -e
+  python3 train_test_chess.py

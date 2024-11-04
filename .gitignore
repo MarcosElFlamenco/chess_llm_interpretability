@@ -3,13 +3,14 @@ __pycache__/
 wandb/
 
 data/*
-!data/train.csv
-!data/test.csv
+!data/lichess_train.csv
+!data/lichess_test.csv
 !data/train_test_splitter.ipynb
 
 models/*
 !models/meta.pkl
 !models/view_model.ipynb
+!models/tf_lens_lichess_8layers_ckpt_no_optimizer.pth
 
 contrastive_activations/*
 intervention_logs/*
@@ -17,3 +18,4 @@ intervention_logs/*
 aws/
 awscliv2.zip
 interEnv/
+checkpoint.pth

@@ -18,6 +18,9 @@ test: $(TEST)
 train_probe:
 	$(PYTHON) $(TEST)
 
+remote_train_probe:
+	sky jobs launch -c boardCluster remote/train_probes.yaml
+
 filter: $(FILTER)
 	$(PYTHON) $(FILTER)
 
